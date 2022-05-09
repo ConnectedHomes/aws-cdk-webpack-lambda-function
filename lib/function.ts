@@ -2,20 +2,15 @@ import { createHash } from "crypto";
 import { existsSync } from "fs";
 import { basename, dirname, extname, join, resolve } from "path";
 import {
-  Code,
-  Function,
-  FunctionOptions,
-  Runtime,
-  RuntimeFamily,
-  SingletonFunction,
-} from "@aws-cdk/aws-lambda";
-import { Construct } from "@aws-cdk/core";
+  aws_lambda as lambda
+} from "aws-cdk-lib"
+import { Construct } from "constructs";
 import { Builder } from "./builder";
 
 /**
  * Properties for a NodejsFunction
  */
-export interface WebpackFunctionProps extends FunctionOptions {
+export interface WebpackFunctionProps extends lambda.FunctionOptions {
   /**
    * Path to the entry file (JavaScript or TypeScript).
    *
@@ -41,7 +36,7 @@ export interface WebpackFunctionProps extends FunctionOptions {
    *
    * @default - NODEJS_14
    */
-  readonly runtime?: Runtime;
+  readonly runtime?: lambda.Runtime;
 
   /**
    * The build directory
@@ -56,6 +51,7 @@ export interface WebpackFunctionProps extends FunctionOptions {
    * @default - true
    */
   readonly ensureUniqueBuildPath?: boolean;
+
 }
 
 export interface WebpackSingletonFunctionProps extends WebpackFunctionProps {
@@ -66,20 +62,20 @@ export interface WebpackSingletonFunctionProps extends WebpackFunctionProps {
 /**
  * A Node.js Lambda function bundled using Parcel
  */
-export class WebpackFunction extends Function {
+export class WebpackFunction extends lambda.Function {
   constructor(scope: Construct, id: string, props: WebpackFunctionProps) {
     const { runtime, handlerDir, outputBasename, handler } = preProcess(props);
 
     super(scope, id, {
       ...props,
       runtime,
-      code: Code.fromAsset(handlerDir),
+      code: lambda.Code.fromAsset(handlerDir),
       handler: `${outputBasename}.${handler}`,
     });
   }
 }
 
-export class WebpackSingletonFunction extends SingletonFunction {
+export class WebpackSingletonFunction extends lambda.SingletonFunction {
   constructor(
     scope: Construct,
     id: string,
@@ -90,14 +86,14 @@ export class WebpackSingletonFunction extends SingletonFunction {
     super(scope, id, {
       ...props,
       runtime,
-      code: Code.fromAsset(handlerDir),
+      code: lambda.Code.fromAsset(handlerDir),
       handler: `${outputBasename}.${handler}`,
     });
   }
 }
 
 function preProcess(props: WebpackFunctionProps) {
-  if (props.runtime && props.runtime.family !== RuntimeFamily.NODEJS) {
+  if (props.runtime && props.runtime.family !== lambda.RuntimeFamily.NODEJS) {
     throw new Error("Only `NODEJS` runtimes are supported.");
   }
   if (!/\.(js|ts)$/.test(props.entry)) {
@@ -110,7 +106,7 @@ function preProcess(props: WebpackFunctionProps) {
     throw new Error(`Cannot find webpack config file at ${props.config}`);
   }
   const handler = props.handler || "handler";
-  const runtime = props.runtime || Runtime.NODEJS_14_X;
+  const runtime = props.runtime || lambda.Runtime.NODEJS_14_X;
   const buildDir = props.buildDir || join(dirname(props.entry), ".build");
   const ensureUniqueBuildPath =
     typeof props.ensureUniqueBuildPath === "boolean"
